@@ -69,55 +69,56 @@ elif input_method == "Paste Text":
         text_loaded = True
 
 if text_loaded and st.session_state.summary is None:
-    with st.spinner("Analyzing document..."):
-        
-        if not documents:
-            st.error("Document is empty or could not be parsed.")
-            st.stop()
+    if st.button("Analyze Document"):
+        with st.spinner("Analyzing document..."):
             
-        whole_text = documents[0].page_content
-        
-        if len(whole_text.strip()) == 0:
-            st.error("The loaded text is empty.")
-            st.stop()
-        
-        parser = StrOutputParser()
-        prompt1 = PromptTemplate(
-            template="Summarize the following set of terms and conditions in a clear, brief and consise way: {text}",
-            input_variables=["text"]
-        )
-        prompt2 = PromptTemplate(
-            template="Based on the following set of terms and conditions, list out the most offensive ones as bullet points briefly: {text} \n ",
-            input_variables=["text"]
-        )
-        
-        chain1 = prompt1 | model | parser
-        chain2 = prompt2 | model | parser
-        
-        status_text = st.empty()
-        status_text.text("Summarizing the document...")
-        
-        # summarize the whole text
-        final_summary = chain1.invoke({"text": whole_text})
-        
-        status_text.text("Extracting offensive terms from the document...")
-        
-        # find offensive terms from the whole text
-        final_offensive = chain2.invoke({"text": whole_text})
-        
-        if not final_offensive or len(final_offensive.strip()) <= 5:
-             final_offensive = "No highly offensive terms found."
-        
-        st.session_state.summary = final_summary
-        st.session_state.offensive_terms = final_offensive
-        
-        status_text.empty()
-        
-        # initialize display messages 
-        st.session_state.messages = []
-        
-        st.session_state.chat_history = [final_summary, final_offensive]
-        st.rerun()
+            if not documents:
+                st.error("Document is empty or could not be parsed.")
+                st.stop()
+                
+            whole_text = documents[0].page_content
+            
+            if len(whole_text.strip()) == 0:
+                st.error("The loaded text is empty.")
+                st.stop()
+            
+            parser = StrOutputParser()
+            prompt1 = PromptTemplate(
+                template="Summarize the following set of terms and conditions in a clear, brief and consise way: {text}",
+                input_variables=["text"]
+            )
+            prompt2 = PromptTemplate(
+                template="Based on the following set of terms and conditions, list out the most offensive ones as bullet points briefly: {text} \n ",
+                input_variables=["text"]
+            )
+            
+            chain1 = prompt1 | model | parser
+            chain2 = prompt2 | model | parser
+            
+            status_text = st.empty()
+            status_text.text("Summarizing the document...")
+            
+            # summarize the whole text
+            final_summary = chain1.invoke({"text": whole_text})
+            
+            status_text.text("Extracting offensive terms from the document...")
+            
+            # find offensive terms from the whole text
+            final_offensive = chain2.invoke({"text": whole_text})
+            
+            if not final_offensive or len(final_offensive.strip()) <= 5:
+                 final_offensive = "No highly offensive terms found."
+            
+            st.session_state.summary = final_summary
+            st.session_state.offensive_terms = final_offensive
+            
+            status_text.empty()
+            
+            # initialize display messages 
+            st.session_state.messages = []
+            
+            st.session_state.chat_history = [final_summary, final_offensive]
+            st.rerun()
 
 if st.session_state.summary is not None:
     st.markdown("Analysis Results:")
