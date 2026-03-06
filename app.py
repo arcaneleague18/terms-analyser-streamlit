@@ -1,3 +1,4 @@
+from langchain_openai.embeddings.base import MAX_TOKENS_PER_REQUEST
 import streamlit as st
 # from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langchain_openai import ChatOpenAI
@@ -12,7 +13,7 @@ from langchain_core.documents import Document
 from dotenv import load_dotenv
 
 load_dotenv()
-api_key = st.secrets["OPENAI_API_KEY"]
+# api_key = st.secrets["OPENAI_API_KEY"]
 
 st.set_page_config(page_title="T&C Analyzer", page_icon="⚖️", layout="wide")
 
@@ -25,6 +26,7 @@ def get_model():
     llm = ChatOpenAI(
         model="qwen/qwen3-coder-next",  # or any OpenRouter model
         openai_api_base="https://openrouter.ai/api/v1",
+        max_tokens=1000, # limits the output length
     )
     return llm
 
@@ -68,8 +70,10 @@ elif input_method == "Paste Text":
         documents = [Document(page_content=raw_text)]
         text_loaded = True
 
+button=st.button("Analyze Document")
+
 if text_loaded and st.session_state.summary is None:
-    if st.button("Analyze Document"):
+    if button:
         with st.spinner("Analyzing document..."):
             
             if not documents:
@@ -84,12 +88,13 @@ if text_loaded and st.session_state.summary is None:
             
             parser = StrOutputParser()
             prompt1 = PromptTemplate(
-                template="Summarize the following set of terms and conditions in a clear, brief and consise way: {text}",
+                template="Summarize the following set of terms and conditions in a clear, very brief and consise way: {text}",
                 input_variables=["text"]
             )
             prompt2 = PromptTemplate(
-                template="Based on the following set of terms and conditions, list out the most offensive ones as bullet points briefly: {text} \n ",
-                input_variables=["text"]
+                template="Based on the following set of terms and conditions, list out the most offensive ones as bullet points very briefly: {text} \n ",
+                input_variables=["text"],
+                MAX_TOKENS_PER_REQUEST=200
             )
             
             chain1 = prompt1 | model | parser
