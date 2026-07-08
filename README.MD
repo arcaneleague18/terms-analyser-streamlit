@@ -3,7 +3,6 @@
 ## Overview
 The **Terms & Conditions Analyzer** is an AI-powered application designed to help users quickly understand long and complex legal documents. By leveraging Large Language Models (LLMs), this tool bridges the gap between complex legal jargon and everyday users, mitigating the risks associated with blind agreements.
 
-**Live at:** https://terms-analyser-app.streamlit.app/
 
 ## Features
 - **Flexible Document Ingestion:** Provide a URL to scrape the terms directly from a website, or paste the raw text into the app.
