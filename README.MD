@@ -21,22 +21,15 @@ The **Terms & Conditions Analyzer** is an AI-powered application designed to hel
 1. **Clone the repository:**
    ```bash
    git clone <repository_url>
-   cd "t&c checker"
    ```
 
-2. **Create a virtual environment (Optional but recommended):**
+2. **Install dependencies:**
+   This project uses `uv` for environment and package management. You can sync the environment and dependencies with a single command:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   uv sync
    ```
 
-3. **Install the required dependencies:**
-   Make sure you have the necessary libraries installed. 
-   ```bash
-   pip install streamlit langchain langchain-openai langchain-community python-dotenv beautifulsoup4
-   ```
-
-4. **Set up environment variables:**
+3. **Set up environment variables:**
    Create a `.env` file in the root directory and add your OpenRouter API Token:
    ```env
    OPENAI_API_KEY=your_openrouter_api_token_here
@@ -45,8 +38,9 @@ The **Terms & Conditions Analyzer** is an AI-powered application designed to hel
 ## Usage
 
 1. **Run the Streamlit application:**
+   Use `uv run` to execute the Streamlit app:
    ```bash
-   streamlit run app.py
+   uv run streamlit run app.py
    ```
 
 2. **Interact with the App:**

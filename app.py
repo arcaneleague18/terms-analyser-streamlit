@@ -1,13 +1,7 @@
-from langchain_openai.embeddings.base import MAX_TOKENS_PER_REQUEST
 import streamlit as st
-# from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langchain_openai import ChatOpenAI
-
-# from langchain_community.document_loaders import TextLoader
-# from langchain_text_splitters import RecursiveCharacterTextSplitter  
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate 
-
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_core.documents import Document
 from dotenv import load_dotenv
@@ -27,6 +21,7 @@ def get_model():
         model="qwen/qwen3-coder-next",  # or any OpenRouter model
         openai_api_base="https://openrouter.ai/api/v1",
         max_tokens=1000, # limits the output length
+        temperature=0,
     )
     return llm
 
@@ -88,11 +83,11 @@ if text_loaded and st.session_state.summary is None:
             
             parser = StrOutputParser()
             prompt1 = PromptTemplate(
-                template="Summarize the following set of terms and conditions in a clear, very brief and consise way: {text}",
+                template="Provide a very short, high-level summary of the following terms and conditions: {text}",
                 input_variables=["text"]
             )
             prompt2 = PromptTemplate(
-                template="Based on the following set of terms and conditions, list out the most offensive ones as bullet points very briefly: {text} \n ",
+                template="Based on the following terms and conditions, list the top 7 most offensive or risky clauses. Format the output strictly as a bulleted list, where each bullet contains very very brief explanation of the clause: {text} \n ",
                 input_variables=["text"],
                 MAX_TOKENS_PER_REQUEST=200
             )
@@ -150,7 +145,7 @@ if st.session_state.summary is not None:
         
         # add user message to UI and model chat history
         st.session_state.messages.append({"role": "user", "content": prompt})
-        st.session_state.chat_history.append(prompt + "briefly without any jargon")
+        st.session_state.chat_history.append(f"System constraint: You are an AI legal assistant. You must ONLY answer questions directly related to the Terms and Conditions document. If the question is irrelevant, refuse to answer politely. User query: {prompt} (Answer briefly without jargon)")
 
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
