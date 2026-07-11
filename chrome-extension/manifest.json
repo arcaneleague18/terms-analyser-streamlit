@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Terms & Conditions Analyzer (AI)",
+  "version": "1.0",
+  "description": "Analyze Terms & Conditions using Chrome's built-in Gemini Nano model.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.svg"
+  },
+  "icons": {
+    "16": "icon.svg",
+    "32": "icon.svg",
+    "48": "icon.svg",
+    "128": "icon.svg"
+  }
+}
