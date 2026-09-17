@@ -8,7 +8,7 @@
 </head>
 <body>
 
-  <!-- Onboarding Panel (Visible when Gemini Nano is not active/available) -->
+  <!-- Onboarding / Connection Panel (Visible when LM Proxy is unreachable) -->
   <div id="onboarding-panel" class="panel hidden">
     <div class="header">
       <div class="brand-mark">
@@ -19,19 +19,21 @@
         </svg>
       </div>
       <div class="title-meta">
-        <h1>Setup Required</h1>
-        <span class="badge badge-warn">Configuration</span>
+        <h1>LM Proxy Disconnected</h1>
+        <span class="badge badge-warn">localhost:4000</span>
       </div>
     </div>
     <div class="warning-box">
-      <p>Chrome Built-in AI (Gemini Nano) is not detected. Follow these steps to enable local inference:</p>
+      <p>Cannot connect to the local model proxy at <code>http://localhost:4000/openai/v1</code>.</p>
       <ol>
-        <li>Navigate to <code>chrome://flags/#prompt-api-for-gemini-nano</code> and set to <strong>Enabled</strong>.</li>
-        <li>Navigate to <code>chrome://flags/#optimization-guide-on-device-model</code> and set to <strong>Enabled BypassPerfRequirement</strong>.</li>
-        <li>Relaunch Chrome.</li>
-        <li>Open <code>chrome://components</code> and click <strong>Check for update</strong> under <em>Optimization Guide On-Device Model</em>.</li>
+        <li>Start your LM Proxy server on port <strong>4000</strong>.</li>
+        <li>Ensure the proxy exposes OpenAI-compatible routes at <code>http://localhost:4000/openai/v1</code>.</li>
+        <li>Click <strong>Retry Connection</strong> below.</li>
       </ol>
-      <button id="btn-recheck" class="btn btn-primary">Check Availability</button>
+      <div class="onboarding-actions">
+        <button id="btn-recheck" class="btn btn-primary">Retry Connection</button>
+        <button id="btn-fallback-nano" class="btn btn-secondary hidden">Fallback to Gemini Nano</button>
+      </div>
       <div id="debug-info"></div>
     </div>
   </div>
@@ -50,7 +52,12 @@
       </div>
       <div class="title-meta">
         <h1>Terms Analyzer</h1>
-        <span class="badge">Gemini Nano &bull; On-Device</span>
+      </div>
+      <div class="header-controls">
+        <span id="status-indicator" class="status-indicator connected" title="LM Proxy status"></span>
+        <select id="model-select" class="model-select" title="Selected Model">
+          <option value="vscode-lm-proxy">vscode-lm-proxy</option>
+        </select>
       </div>
     </header>
 

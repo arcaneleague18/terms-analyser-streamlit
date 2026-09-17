@@ -9,12 +9,13 @@ The **Terms & Conditions Analyzer** is an AI-powered application designed to hel
 - **Document Summarization:** Get a clear, concise summary of the terms within seconds.
 - **Risk Extraction:** Automatically identifies and highlights the most offensive, unfair, or highly risky clauses hidden in the fine print as bullet points.
 - **Interactive Chat:** An integrated chatbot interface allows you to ask follow-up questions about the document and get immediate answers.
-- **Local Chrome Extension:** A browser extension companion that runs **100% offline and keyless** using Chrome's built-in Gemini Nano model.
+- **Local Chrome Extension:** A minimalist browser extension companion that connects to **LM Proxy** (`localhost:4000`, OpenAI-compatible) or runs on-device using Chrome's Gemini Nano model.
 
 ## Technologies Used
 - **Web App:** Streamlit (Frontend/UI) & Langchain (LLM Orchestration)
 - **Chrome Extension:** Manifest V3, Javascript Scripting API
-- **Local AI:** Google Gemini Nano (Prompt API / `window.ai`)
+- **Local Model Proxy:** LM Proxy (`http://localhost:4000/openai/v1`, `vscode-lm-proxy`)
+- **Local AI Fallback:** Google Gemini Nano (Prompt API / `window.ai`)
 - **Cloud Models:** Qwen/Qwen3-Coder-Next (via OpenRouter API in Streamlit app)
 - **Environment Management:** Python `dotenv` for handling API keys in Streamlit
 
@@ -37,13 +38,15 @@ The **Terms & Conditions Analyzer** is an AI-powered application designed to hel
    OPENAI_API_KEY=your_openrouter_api_token_here
    ```
 
-### Option B: Chrome Extension Setup (Offline, Keyless)
-1. **Prerequisites (Chrome 128+ recommended)**:
+### Option B: Chrome Extension Setup (LM Proxy / Gemini Nano)
+1. **LM Proxy Setup (Recommended)**:
+   - Ensure your local LM Proxy server is running on port 4000 (`http://localhost:4000/openai/v1`).
+   - The extension will automatically discover available models (defaulting to `vscode-lm-proxy`).
+2. **Optional Gemini Nano Setup (Fallback)**:
    - Go to `chrome://flags/#prompt-api-for-gemini-nano` -> Set to **Enabled**.
    - Go to `chrome://flags/#optimization-guide-on-device-model` -> Set to **Enabled BypassPerfRequirement**.
-   - Relaunch Google Chrome.
-   - Go to `chrome://components` -> Find **Optimization Guide On-Device Model** and click **Check for update** to download the model.
-2. **Load Extension**:
+   - Relaunch Google Chrome and update the model under `chrome://components`.
+3. **Load Extension in Chrome**:
    - Open `chrome://extensions/` and enable **Developer Mode** (top-right).
    - Click **Load unpacked** (top-left) and select the `chrome-extension` directory inside this repository.
 
@@ -60,9 +63,9 @@ The **Terms & Conditions Analyzer** is an AI-powered application designed to hel
 
 ### Using the Chrome Extension
 1. Click the pinned T&C Analyzer icon in your Chrome toolbar.
-2. Navigate to any Terms & Conditions webpage and click **Analyze Current Tab** (or paste text into the box).
-3. The local Gemini Nano model will analyze the terms directly in your browser.
-4. Go to the **Chat** tab to ask follow-up questions offline.
+2. Select your desired model from the dropdown (defaults to `vscode-lm-proxy` via LM Proxy at `localhost:4000`).
+3. Navigate to any Terms & Conditions webpage and click **Analyze Current Tab** (or paste text into the box).
+4. View the generated document summary, extracted risk items, and ask follow-up questions in the **Chat** tab.
 
 ## Project Structure
 - `app.py`: The main Streamlit application containing the UI and Langchain integration.

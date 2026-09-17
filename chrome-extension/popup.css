@@ -87,6 +87,55 @@ body {
   color: var(--text);
 }
 
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.status-indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.status-indicator.connected {
+  background: var(--accent-success);
+  box-shadow: 0 0 0 2px var(--accent-success-bg);
+}
+
+.status-indicator.disconnected {
+  background: var(--accent-warn);
+  box-shadow: 0 0 0 2px var(--accent-warn-bg);
+}
+
+.model-select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+  max-width: 155px;
+  text-overflow: ellipsis;
+  transition: border-color 0.15s ease;
+}
+
+.model-select:focus {
+  border-color: var(--border-focus);
+}
+
+.model-select option {
+  background: #18191d;
+  color: var(--text);
+}
+
 .badge {
   font-size: 10px;
   color: var(--text-secondary);
@@ -102,6 +151,12 @@ body {
   color: var(--accent-warn);
   background: var(--accent-warn-bg);
   border-color: var(--accent-warn-border);
+}
+
+.onboarding-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* Onboarding Warning Box */

@@ -1,14 +1,26 @@
-// Globals
-let aiModel = null;
+// Configuration
+const DEFAULT_LM_PROXY_URL = "http://localhost:4000/openai/v1";
+const FALLBACK_LM_PROXY_URL = "http://localhost:4000/v1";
+const DEFAULT_MODEL = "vscode-lm-proxy";
+
+// State
+let activeMode = "lm-proxy"; // "lm-proxy" | "gemini-nano"
+let activeBaseUrl = DEFAULT_LM_PROXY_URL;
+let selectedModel = DEFAULT_MODEL;
+let aiModel = null; // Gemini Nano reference if available
 let currentSummary = "";
 let currentRisks = "";
-let chatSession = null;
+let chatHistory = [];
+let chatSessionNano = null;
 let analyzedText = "";
 
 // DOM Elements
 const onboardingPanel = document.getElementById("onboarding-panel");
 const appContainer = document.getElementById("app-container");
 const btnRecheck = document.getElementById("btn-recheck");
+const btnFallbackNano = document.getElementById("btn-fallback-nano");
+const modelSelect = document.getElementById("model-select");
+const statusIndicator = document.getElementById("status-indicator");
 
 const tabButtons = document.querySelectorAll(".tab-btn");
 const tabContents = document.querySelectorAll(".tab-content");
@@ -35,19 +47,27 @@ const loadingText = document.getElementById("loading-text");
 document.addEventListener("DOMContentLoaded", async () => {
   setupTabs();
   setupCopyButtons();
-  
-  const available = await checkAndInitAI();
-  if (!available) {
-    showOnboarding();
-  } else {
-    showApp();
-  }
+  setupModelSelect();
+
+  await initEngine();
 
   // Setup Event Listeners
   btnRecheck.addEventListener("click", async () => {
-    const ok = await checkAndInitAI();
+    btnRecheck.disabled = true;
+    btnRecheck.innerText = "Checking...";
+    const ok = await initEngine();
+    btnRecheck.disabled = false;
+    btnRecheck.innerText = "Retry Connection";
     if (ok) showApp();
   });
+
+  if (btnFallbackNano) {
+    btnFallbackNano.addEventListener("click", () => {
+      activeMode = "gemini-nano";
+      updateStatusDisplay("connected", "Gemini Nano");
+      showApp();
+    });
+  }
 
   btnAnalyzeTab.addEventListener("click", analyzeActiveTab);
   btnAnalyzeText.addEventListener("click", analyzePastedText);
@@ -57,7 +77,43 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 });
 
-// Helper to log debug info directly to screen
+// Setup Model Selector
+function setupModelSelect() {
+  if (!modelSelect) return;
+  
+  // Load saved preference
+  if (chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get(["selectedModel", "activeBaseUrl"], (data) => {
+      if (data.selectedModel) {
+        selectedModel = data.selectedModel;
+        ensureOptionExists(modelSelect, selectedModel);
+        modelSelect.value = selectedModel;
+      }
+      if (data.activeBaseUrl) {
+        activeBaseUrl = data.activeBaseUrl;
+      }
+    });
+  }
+
+  modelSelect.addEventListener("change", (e) => {
+    selectedModel = e.target.value;
+    if (chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ selectedModel });
+    }
+  });
+}
+
+function ensureOptionExists(selectEl, value) {
+  for (let i = 0; i < selectEl.options.length; i++) {
+    if (selectEl.options[i].value === value) return;
+  }
+  const opt = document.createElement("option");
+  opt.value = value;
+  opt.textContent = value;
+  selectEl.appendChild(opt);
+}
+
+// Helper to log debug info
 function logDebug(msg) {
   const el = document.getElementById("debug-info");
   if (el) {
@@ -65,86 +121,139 @@ function logDebug(msg) {
   }
 }
 
-// Check for Prompt API capabilities
-async function checkAndInitAI() {
-  logDebug("Starting AI capability check...");
+// Engine Initialization & Health Checks
+async function initEngine() {
+  logDebug("Checking LM Proxy connection at " + DEFAULT_LM_PROXY_URL + "...");
   
+  const proxyConnected = await checkAndInitLMProxy();
+  if (proxyConnected) {
+    activeMode = "lm-proxy";
+    updateStatusDisplay("connected", selectedModel);
+    showApp();
+    return true;
+  }
+
+  logDebug("LM Proxy unreachable. Checking Gemini Nano capabilities...");
+  const nanoAvailable = await checkNanoAvailability();
+  if (nanoAvailable) {
+    logDebug("Gemini Nano detected. Fallback option available.");
+    if (btnFallbackNano) btnFallbackNano.classList.remove("hidden");
+  } else {
+    if (btnFallbackNano) btnFallbackNano.classList.add("hidden");
+  }
+
+  updateStatusDisplay("disconnected", "Offline");
+  showOnboarding();
+  return false;
+}
+
+// Check LM Proxy and fetch models list
+async function checkAndInitLMProxy() {
+  const candidateUrls = [DEFAULT_LM_PROXY_URL, FALLBACK_LM_PROXY_URL];
+
+  for (const url of candidateUrls) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+      const res = await fetch(`${url}/models`, {
+        signal: controller.signal,
+        headers: { "Authorization": "Bearer not-needed" }
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        activeBaseUrl = url;
+        logDebug(`Connected to LM Proxy at: ${url}`);
+        
+        try {
+          const data = await res.json();
+          if (data && Array.isArray(data.data) && data.data.length > 0) {
+            populateModelSelect(data.data.map(m => m.id));
+          } else {
+            populateModelSelect([DEFAULT_MODEL]);
+          }
+        } catch (_) {
+          populateModelSelect([DEFAULT_MODEL]);
+        }
+        return true;
+      }
+    } catch (err) {
+      logDebug(`Probe failed for ${url}: ${err.message}`);
+    }
+  }
+  return false;
+}
+
+function populateModelSelect(models) {
+  if (!modelSelect) return;
+  modelSelect.innerHTML = "";
+
+  models.forEach(modelId => {
+    const opt = document.createElement("option");
+    opt.value = modelId;
+    opt.textContent = modelId;
+    modelSelect.appendChild(opt);
+  });
+
+  // Preserve previously selected or default to vscode-lm-proxy
+  if (models.includes(selectedModel)) {
+    modelSelect.value = selectedModel;
+  } else if (models.includes(DEFAULT_MODEL)) {
+    selectedModel = DEFAULT_MODEL;
+    modelSelect.value = DEFAULT_MODEL;
+  } else if (models.length > 0) {
+    selectedModel = models[0];
+    modelSelect.value = selectedModel;
+  }
+}
+
+function updateStatusDisplay(status, label) {
+  if (statusIndicator) {
+    statusIndicator.className = `status-indicator ${status}`;
+    statusIndicator.title = `Status: ${status} (${label || ""})`;
+  }
+}
+
+// Check for Prompt API (Gemini Nano) capabilities as optional fallback
+async function checkNanoAvailability() {
   let target = null;
   if (typeof ai !== "undefined") {
-    logDebug("Found global 'ai' object");
     target = ai;
   } else if (typeof window.ai !== "undefined") {
-    logDebug("Found 'window.ai' object");
     target = window.ai;
-  } else if (typeof chrome !== "undefined" && chrome.ai) {
-    logDebug("Found 'chrome.ai' object");
-    target = chrome.ai;
-  } else if (typeof chrome !== "undefined" && chrome.aiOriginTrial) {
-    logDebug("Found 'chrome.aiOriginTrial' object");
-    target = chrome.aiOriginTrial;
   } else if (typeof chrome !== "undefined" && chrome.aiLanguageModel) {
-    logDebug("Found 'chrome.aiLanguageModel' object");
     aiModel = chrome.aiLanguageModel;
   } else if (typeof LanguageModel !== "undefined") {
-    logDebug("Found global 'LanguageModel' class!");
     try {
       const availability = await LanguageModel.availability();
-      logDebug(`LanguageModel.availability(): "${availability}"`);
       if (availability !== "no") {
         aiModel = {
-          create: (options) => LanguageModel.create(options),
-          capabilities: () => LanguageModel.capabilities ? LanguageModel.capabilities() : Promise.resolve({ available: availability }),
+          create: (opts) => LanguageModel.create(opts),
           availability: () => Promise.resolve(availability)
         };
         return true;
       }
-    } catch (err) {
-      logDebug(`Error checking global LanguageModel: ${err.message}`);
-    }
+    } catch (_) {}
   }
 
   if (target) {
-    logDebug(`Keys on target: [${Object.keys(target).join(", ")}]`);
-    if (target.languageModel) {
-      aiModel = target.languageModel;
-      logDebug("Selected: target.languageModel");
-    } else if (target.assistant) {
-      aiModel = target.assistant;
-      logDebug("Selected: target.assistant");
-    }
+    if (target.languageModel) aiModel = target.languageModel;
+    else if (target.assistant) aiModel = target.assistant;
   }
 
-  if (!aiModel) {
-    logDebug("Error: No AI model namespace found. Checked (ai, window.ai, chrome.ai, chrome.aiOriginTrial, LanguageModel, chrome.aiLanguageModel)");
-    return false;
-  }
+  if (!aiModel) return false;
 
   try {
-    if (typeof aiModel.capabilities === "function") {
-      logDebug("Calling capabilities()...");
-      const capabilities = await aiModel.capabilities();
-      logDebug(`capabilities.available: "${capabilities.available}"`);
-      return capabilities.available !== "no";
-    } else if (typeof aiModel.canCreate === "function") {
-      logDebug("Calling canCreate()...");
-      const availability = await aiModel.canCreate();
-      logDebug(`canCreate: "${availability}"`);
-      return availability !== "no";
-    } else if (typeof aiModel.availability === "function") {
-      logDebug("Calling availability()...");
-      const availability = await aiModel.availability();
-      logDebug(`availability: "${availability}"`);
-      return availability !== "no";
-    } else {
-      logDebug("Warning: No standard capability function found. Attempting direct creation...");
-      const testSession = await aiModel.create();
-      testSession.destroy();
-      logDebug("Direct session creation test succeeded!");
-      return true;
+    if (typeof aiModel.availability === "function") {
+      const avail = await aiModel.availability();
+      return avail !== "no";
+    } else if (typeof aiModel.capabilities === "function") {
+      const caps = await aiModel.capabilities();
+      return caps.available !== "no";
     }
-  } catch (err) {
-    logDebug(`Exception checking capabilities: ${err.message}`);
-    console.error("Capability check threw exception:", err);
+    return true;
+  } catch (_) {
     return false;
   }
 }
@@ -176,7 +285,7 @@ function setupTabs() {
   });
 }
 
-// Set up copying text contents
+// Copy Buttons
 function setupCopyButtons() {
   document.querySelectorAll(".btn-copy").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -186,7 +295,7 @@ function setupCopyButtons() {
         navigator.clipboard.writeText(targetEl.innerText)
           .then(() => {
             const originalText = btn.innerText;
-            btn.innerText = "Copied!";
+            btn.innerText = "Copied";
             btn.style.color = "var(--accent-success)";
             setTimeout(() => {
               btn.innerText = originalText;
@@ -199,7 +308,7 @@ function setupCopyButtons() {
   });
 }
 
-// UI State Toggles during loading/processing
+// UI State Toggles during loading
 function showLoading(text) {
   loadingText.innerText = text;
   loadingOverlay.classList.remove("hidden");
@@ -209,7 +318,7 @@ function hideLoading() {
   loadingOverlay.classList.add("hidden");
 }
 
-// Core Analysis Handler
+// Active Tab Scraping
 async function analyzeActiveTab() {
   showLoading("Reading webpage content...");
   try {
@@ -231,7 +340,7 @@ async function analyzePastedText() {
     alert("Please paste some terms & conditions first.");
     return;
   }
-  showLoading("Processing pasted text...");
+  showLoading("Processing text...");
   try {
     await processText(content);
   } catch (err) {
@@ -241,7 +350,7 @@ async function analyzePastedText() {
   }
 }
 
-// Scrape page text via scripting API
+// Scrape page text via scripting API stripping noise elements
 async function getActiveTabContent() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -268,13 +377,48 @@ async function getActiveTabContent() {
   }
 }
 
-// Text Processing using Prompt API
+// Unified LLM Invocation
+async function executeLLM(systemPrompt, userPrompt) {
+  if (activeMode === "lm-proxy") {
+    const response = await fetch(`${activeBaseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer not-needed"
+      },
+      body: JSON.stringify({
+        model: selectedModel,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: 0.1
+      })
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`LM Proxy (${response.status}): ${errBody || response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content?.trim() || "No output returned.";
+  } else if (activeMode === "gemini-nano") {
+    const session = await aiModel.create({ systemPrompt });
+    const output = await session.prompt(userPrompt);
+    session.destroy();
+    return output.trim();
+  }
+  throw new Error("No active LLM engine configured.");
+}
+
+// Core Text Processing Pipeline
 async function processText(text) {
   // Preserve beginning (definitions/scope) and end (dispute/arbitration/liability/termination)
-  const maxLength = 14000;
+  const maxLength = 16000;
   if (text.length > maxLength) {
-    const headLength = 9000;
-    const tailLength = 4500;
+    const headLength = 10000;
+    const tailLength = 5000;
     analyzedText = text.substring(0, headLength) + 
       "\n\n[... middle sections omitted for length limitations ...]\n\n" + 
       text.substring(text.length - tailLength);
@@ -282,46 +426,47 @@ async function processText(text) {
     analyzedText = text;
   }
 
-  // Reset states
-  chatSession = null;
+  // Reset conversation states
+  chatHistory = [];
+  chatSessionNano = null;
   chatMessages.innerHTML = "";
 
-  showLoading("Analyzing: Generating Summary...");
+  showLoading(`Analyzing: Generating Summary (${selectedModel})...`);
   try {
-    const summarySession = await aiModel.create({
-      systemPrompt: "You are a legal assistant. Provide a very short, high-level summary (3-4 sentences max) of the provided terms and conditions text. Do not use legal jargon. Focus on what this service is and user consent."
-    });
-    currentSummary = await summarySession.prompt(analyzedText);
+    const summaryPrompt = "You are an AI legal assistant. Provide a concise, high-level summary (3-4 sentences) of the provided terms and conditions text. Do not use legal jargon. Focus on what this service is, key user commitments, and consent.";
+    currentSummary = await executeLLM(summaryPrompt, analyzedText);
     summaryTextContainer.innerText = currentSummary;
-    summarySession.destroy();
   } catch (err) {
     console.error("Summary failed:", err);
-    currentSummary = "Error generating summary with Gemini Nano: " + err.message;
+    currentSummary = `Error generating summary: ${err.message}`;
     summaryTextContainer.innerText = currentSummary;
   }
 
-  showLoading("Analyzing: Extracting Risks...");
+  showLoading(`Analyzing: Extracting Risks (${selectedModel})...`);
   try {
-    const risksSession = await aiModel.create({
-      systemPrompt: "You are a legal assistant. Based on the terms and conditions text, list the top 7 most offensive or risky clauses. Format the output strictly as a markdown bulleted list, where each bullet contains a very very brief one-liner explanation of the clause. Do not use legal jargon."
-    });
-    currentRisks = await risksSession.prompt(analyzedText);
-    
-    // Parse simple markdown list to HTML format
+    const risksPrompt = "You are an AI legal assistant. Based on the terms and conditions text, list the top 7 most offensive, one-sided, or risky clauses. Format the output strictly as a markdown bulleted list, where each bullet contains a concise one-line explanation of the clause. Do not use legal jargon.";
+    currentRisks = await executeLLM(risksPrompt, analyzedText);
     risksListContainer.innerHTML = formatMarkdownList(currentRisks);
-    risksSession.destroy();
   } catch (err) {
     console.error("Risks extraction failed:", err);
-    currentRisks = "Error extracting risk clauses with Gemini Nano: " + err.message;
+    currentRisks = `Error extracting risk clauses: ${err.message}`;
     risksListContainer.innerText = currentRisks;
   }
+
+  // Initialize chat history context with full analyzed document
+  chatHistory = [
+    {
+      role: "system",
+      content: `You are an AI legal assistant analyzing this Terms and Conditions document. You must ONLY answer questions directly related to this document. If the question is irrelevant, refuse to answer politely. Keep answers clear, accurate, and concise without unnecessary legal jargon.\n\nDocument Context:\n${analyzedText}`
+    }
+  ];
 
   // Enable navigation tabs
   navSummary.removeAttribute("disabled");
   navRisks.removeAttribute("disabled");
   navChat.removeAttribute("disabled");
 
-  // Automatically show summary tab
+  // Switch to summary tab
   switchToTab("tab-summary");
 }
 
@@ -374,29 +519,55 @@ async function sendChatMessage() {
   const query = chatInput.value.trim();
   if (!query) return;
 
-  // Append user message
+  // Append user message to UI
   appendMessage("user", query);
   chatInput.value = "";
 
   const responsePlaceholder = appendMessage("assistant", "Thinking...");
 
   try {
-    if (!chatSession) {
-      showLoading("Initializing chat context...");
-      try {
-        chatSession = await aiModel.create({
-          systemPrompt: `You are an AI legal assistant. You are chatting about this Terms and Conditions document. You must ONLY answer questions directly related to this document. If the question is irrelevant, refuse to answer politely. Here is the context of the terms: ${analyzedText}`
-        });
-      } finally {
-        hideLoading();
-      }
-    }
+    if (activeMode === "lm-proxy") {
+      chatHistory.push({ role: "user", content: query });
 
-    const reply = await chatSession.prompt(query);
-    responsePlaceholder.innerText = reply;
+      const response = await fetch(`${activeBaseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer not-needed"
+        },
+        body: JSON.stringify({
+          model: selectedModel,
+          messages: chatHistory,
+          temperature: 0.2
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errText}`);
+      }
+
+      const data = await response.json();
+      const reply = data.choices?.[0]?.message?.content?.trim() || "No response received.";
+      chatHistory.push({ role: "assistant", content: reply });
+      responsePlaceholder.innerText = reply;
+    } else if (activeMode === "gemini-nano") {
+      if (!chatSessionNano) {
+        showLoading("Initializing chat context...");
+        try {
+          chatSessionNano = await aiModel.create({
+            systemPrompt: `You are an AI legal assistant. You are chatting about this Terms and Conditions document. You must ONLY answer questions directly related to this document. If the question is irrelevant, refuse to answer politely. Here is the context of the terms: ${analyzedText}`
+          });
+        } finally {
+          hideLoading();
+        }
+      }
+      const reply = await chatSessionNano.prompt(query);
+      responsePlaceholder.innerText = reply;
+    }
   } catch (err) {
     console.error("Chat prompting error:", err);
-    responsePlaceholder.innerText = "Sorry, I encountered an error answering your question. It could be due to model token limits or internal browser settings.";
+    responsePlaceholder.innerText = `Error: ${err.message}. Ensure LM Proxy is running on localhost:4000.`;
   }
 }
 

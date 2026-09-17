@@ -1,11 +1,16 @@
 {
   "manifest_version": 3,
   "name": "Terms & Conditions Analyzer (AI)",
-  "version": "1.0",
-  "description": "Analyze Terms & Conditions using Chrome's built-in Gemini Nano model.",
+  "version": "1.1",
+  "description": "Analyze Terms & Conditions using LM Proxy (localhost:4000) or local AI.",
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:4000/*",
+    "http://127.0.0.1:4000/*"
   ],
   "action": {
     "default_popup": "popup.html",
