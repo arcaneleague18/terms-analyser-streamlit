@@ -5,78 +5,105 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>T&C Analyzer</title>
   <link rel="stylesheet" href="popup.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
   <!-- Onboarding Panel (Visible when Gemini Nano is not active/available) -->
   <div id="onboarding-panel" class="panel hidden">
     <div class="header">
-      <div class="logo">⚖️</div>
-      <h1>Setup Required</h1>
+      <div class="brand-mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <div class="title-meta">
+        <h1>Setup Required</h1>
+        <span class="badge badge-warn">Configuration</span>
+      </div>
     </div>
     <div class="warning-box">
-      <p><strong>Chrome Built-in AI (Gemini Nano)</strong> is not enabled in your browser. Please follow these steps to enable it:</p>
+      <p>Chrome Built-in AI (Gemini Nano) is not detected. Follow these steps to enable local inference:</p>
       <ol>
-        <li>Open <code>chrome://flags/#prompt-api-for-gemini-nano</code> and set to <strong>Enabled</strong>.</li>
-        <li>Open <code>chrome://flags/#optimization-guide-on-device-model</code> and set to <strong>Enabled BypassPerfRequirement</strong>.</li>
-        <li>Relaunch your browser.</li>
-        <li>Go to <code>chrome://components</code> and click <strong>Check for update</strong> under <em>Optimization Guide On-Device Model</em>. Wait for the download to complete.</li>
+        <li>Navigate to <code>chrome://flags/#prompt-api-for-gemini-nano</code> and set to <strong>Enabled</strong>.</li>
+        <li>Navigate to <code>chrome://flags/#optimization-guide-on-device-model</code> and set to <strong>Enabled BypassPerfRequirement</strong>.</li>
+        <li>Relaunch Chrome.</li>
+        <li>Open <code>chrome://components</code> and click <strong>Check for update</strong> under <em>Optimization Guide On-Device Model</em>.</li>
       </ol>
-      <button id="btn-recheck" class="btn btn-primary">Check Availability Again</button>
-      <div id="debug-info" style="font-family: monospace; font-size: 10px; color: var(--text-secondary); margin-top: 10px; white-space: pre-wrap; border-top: 1px dashed var(--border); padding-top: 10px; max-height: 120px; overflow-y: auto;"></div>
+      <button id="btn-recheck" class="btn btn-primary">Check Availability</button>
+      <div id="debug-info"></div>
     </div>
   </div>
 
   <!-- Main Application Container -->
   <div id="app-container" class="panel">
-    <div class="header">
-      <div class="logo">⚖️</div>
-      <div class="title-meta">
-        <h1>T&C Analyzer</h1>
-        <span class="badge">Gemini Nano (Local AI)</span>
+    <header class="header">
+      <div class="brand-mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v18"></path>
+          <rect x="2" y="7" width="20" height="1.2" rx="0.6" fill="currentColor"></rect>
+          <path d="M5 8.2l-3 6.8a4 4 0 0 0 8 0l-3-6.8"></path>
+          <path d="M19 8.2l-3 6.8a4 4 0 0 0 8 0l-3-6.8"></path>
+          <path d="M8 21h8"></path>
+        </svg>
       </div>
-    </div>
+      <div class="title-meta">
+        <h1>Terms Analyzer</h1>
+        <span class="badge">Gemini Nano &bull; On-Device</span>
+      </div>
+    </header>
 
     <!-- Navigation Tabs -->
-    <nav class="tabs">
-      <button class="tab-btn active" data-tab="tab-analyze">Analyze</button>
-      <button class="tab-btn" data-tab="tab-summary" id="nav-summary" disabled>Summary</button>
-      <button class="tab-btn" data-tab="tab-risks" id="nav-risks" disabled>Risks</button>
-      <button class="tab-btn" data-tab="tab-chat" id="nav-chat" disabled>Chat</button>
+    <nav class="tabs" role="tablist">
+      <button class="tab-btn active" data-tab="tab-analyze" role="tab">Analyze</button>
+      <button class="tab-btn" data-tab="tab-summary" id="nav-summary" role="tab" disabled>Summary</button>
+      <button class="tab-btn" data-tab="tab-risks" id="nav-risks" role="tab" disabled>Risks</button>
+      <button class="tab-btn" data-tab="tab-chat" id="nav-chat" role="tab" disabled>Chat</button>
     </nav>
 
     <!-- Content Sections -->
     <main class="content-container">
 
       <!-- Analyze View -->
-      <section id="tab-analyze" class="tab-content active">
+      <section id="tab-analyze" class="tab-content active" role="tabpanel">
         <div class="action-card">
-          <h3>Analyze Active Tab</h3>
-          <p class="description">Scrapes the terms and conditions directly from your current active webpage.</p>
+          <div class="card-title-row">
+            <h3>Active Webpage</h3>
+            <span class="sub-tag">One-Click</span>
+          </div>
+          <p class="description">Extract and evaluate terms directly from the active browser tab.</p>
           <button id="btn-analyze-tab" class="btn btn-primary">
-            <span class="icon">🔍</span> Analyze Current Tab
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span>Analyze Current Tab</span>
           </button>
         </div>
 
         <div class="divider"><span>OR</span></div>
 
         <div class="action-card">
-          <h3>Paste Text Manually</h3>
-          <textarea id="text-input" placeholder="Paste the terms & conditions text here..."></textarea>
+          <div class="card-title-row">
+            <h3>Manual Input</h3>
+            <span class="sub-tag">Raw Text</span>
+          </div>
+          <textarea id="text-input" placeholder="Paste terms and conditions text here..."></textarea>
           <button id="btn-analyze-text" class="btn btn-secondary">
-            Analyze Pasted Text
+            <span>Analyze Pasted Text</span>
           </button>
         </div>
       </section>
 
       <!-- Summary View -->
-      <section id="tab-summary" class="tab-content">
+      <section id="tab-summary" class="tab-content" role="tabpanel">
         <div class="results-card">
           <div class="card-header">
-            <h3>📝 Document Summary</h3>
+            <div class="header-label-group">
+              <h3>Document Summary</h3>
+              <span class="count-tag">Overview</span>
+            </div>
             <button class="btn-copy" data-target="summary-text">Copy</button>
           </div>
           <div id="summary-text" class="results-body"></div>
@@ -84,10 +111,13 @@
       </section>
 
       <!-- Risks View -->
-      <section id="tab-risks" class="tab-content">
+      <section id="tab-risks" class="tab-content" role="tabpanel">
         <div class="results-card">
           <div class="card-header">
-            <h3>🚩 Top 7 Offensive Clauses</h3>
+            <div class="header-label-group">
+              <h3>Key Risk Clauses</h3>
+              <span class="count-tag count-tag-warn">Top 7 Items</span>
+            </div>
             <button class="btn-copy" data-target="risks-list">Copy</button>
           </div>
           <div id="risks-list" class="results-body"></div>
@@ -95,14 +125,17 @@
       </section>
 
       <!-- Chat View -->
-      <section id="tab-chat" class="tab-content">
+      <section id="tab-chat" class="tab-content" role="tabpanel">
         <div class="chat-container">
-          <div id="chat-messages" class="chat-messages">
-            <!-- Messages dynamic inject -->
-          </div>
+          <div id="chat-messages" class="chat-messages"></div>
           <div class="chat-input-area">
-            <input type="text" id="chat-input" placeholder="Ask a question about the document...">
-            <button id="btn-chat-send" class="btn btn-primary">Send</button>
+            <input type="text" id="chat-input" placeholder="Ask a question about this document...">
+            <button id="btn-chat-send" class="btn btn-primary btn-icon-only" aria-label="Send message">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
           </div>
         </div>
       </section>

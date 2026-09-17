@@ -66,7 +66,7 @@ The **Terms & Conditions Analyzer** is an AI-powered application designed to hel
 
 ## Project Structure
 - `app.py`: The main Streamlit application containing the UI and Langchain integration.
-- `main.py`: The original CLI-based script for analyzing T&Cs.
+- `terms_analyzer_gradio.ipynb`: Prototyping notebook exploring Gradio-based analysis interfaces.
 - `chrome-extension/`: Folder containing the Chrome Extension source code.
   - `manifest.json`: Manifest configuration file.
   - `popup.html` / `popup.css` / `popup.js`: Extension user interface and controller.

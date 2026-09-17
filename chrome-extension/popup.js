@@ -249,7 +249,13 @@ async function getActiveTabContent() {
 
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: () => document.body.innerText
+      func: () => {
+        const clone = document.body.cloneNode(true);
+        const noise = clone.querySelectorAll("script, style, noscript, nav, header, footer, aside, svg, form, iframe");
+        noise.forEach(el => el.remove());
+        const main = clone.querySelector("main") || clone.querySelector("article") || clone;
+        return (main.innerText || main.textContent || "").trim();
+      }
     });
 
     if (!results || !results[0]) {
@@ -264,11 +270,17 @@ async function getActiveTabContent() {
 
 // Text Processing using Prompt API
 async function processText(text) {
-  // Truncate to avoid Gemini Nano token capacity constraints (~4k-8k tokens max)
-  const maxLength = 12000;
-  analyzedText = text.length > maxLength 
-    ? text.substring(0, maxLength) + "\n\n[Content truncated for analysis limitations]"
-    : text;
+  // Preserve beginning (definitions/scope) and end (dispute/arbitration/liability/termination)
+  const maxLength = 14000;
+  if (text.length > maxLength) {
+    const headLength = 9000;
+    const tailLength = 4500;
+    analyzedText = text.substring(0, headLength) + 
+      "\n\n[... middle sections omitted for length limitations ...]\n\n" + 
+      text.substring(text.length - tailLength);
+  } else {
+    analyzedText = text;
+  }
 
   // Reset states
   chatSession = null;
